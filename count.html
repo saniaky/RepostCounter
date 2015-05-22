@@ -1,0 +1,170 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SKYLINE dance studio</title>
+    <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
+    <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+    <script src="http://cdn.jsdelivr.net/jquery.mixitup/2.1.6/jquery.mixitup.min.js"></script>
+    <script src="http://vk.com/js/api/openapi.js" type="text/javascript"></script>
+    <style type="text/css">
+        table {
+            word-wrap: break-word;
+        }
+
+        #spinner {
+            display: none;
+        }
+
+        #results {
+            display: none;
+        }
+
+        #sortControls {
+            margin-top: 20px;
+        }
+
+        .mix {
+            width: 50%;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h3>Получение юзеров сделавших репосты поста</h3>
+
+    <div class="col-md-3">
+        <form>
+            id автора репоста: <input type="text" id="group_id" class="form-control" value="-60216984"><br>
+            id репоста: <input type="text" id="repost_id" class="form-control" value="1050"><br>
+            <button class="btn btn-info" id="checkBtn">Проверить</button>
+            <img src="ajax-loader.gif" id="spinner">
+        </form>
+        <p id="sortControls">
+            <button class="btn btn-default sort" data-sort="random">Рандом</button>
+            <button class="btn btn-default sort" data-sort="default">Стандартная</button>
+        </p>
+    </div>
+    <div class="col-md-9" id="results">
+        <div class="row">
+            <div class="col-md-6">
+                <p>Репосты пользователей</p>
+                <table class="table" id="users"></table>
+            </div>
+            <div class="col-md-6">
+                <p>Репосты групп</p>
+                <table class="table table-striped" id="communities"></table>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    var appId = '4540428';
+    var apiVer = '5.24';
+
+    $(document).ready(function () {
+        $("#checkBtn").on("click", function (event) {
+            event.preventDefault();
+            $(this).prop('disabled', true);
+            var group = $("#group_id").val();
+            var repost = $("#repost_id").val();
+            $("#spinner").show();
+            checkRepost(group, repost);
+        });
+    });
+
+    VK.init({
+        apiId: appId
+    });
+
+    function checkRepost(group_id, repost_id) {
+        getLikesList(group_id, repost_id, function (data) {
+            $("#results").prepend("Общее количество поделившихся: <b>" + data.response.count + "</b>");
+            var results = data.response.items;
+            var users = [];
+            var communities = [];
+            for (var i = 0; i < results.length; i++) {
+                if (results[i] > 0) {
+                    users.push(results[i]);
+                } else {
+                    communities.push(Math.abs(results[i]));
+                }
+            }
+            getUsers(users, displayUsers);
+            getCommunities(communities, displayCommunities);
+        });
+    }
+
+    function displayUsers(data) {
+        if (data.response) {
+            var table = $("#users");
+            var users = data.response;
+            for (var i = 0; i < users.length; i++) {
+                table.append(
+                                "<tr class='mix'><td>" + i + "</td>" +
+                                "<td width='60%'><a href='http://vk.com/id" + users[i].id + "'>" + users[i].first_name + " " + users[i].last_name + "</a>" +
+                                "<td width='30%'><img src='" + users[i].photo + "'>" +
+                                "</tr>");
+            }
+            $("#results").show();
+            $("#spinner").hide();
+            table.mixItUp();
+        }
+    }
+
+    function displayCommunities(data) {
+        if (data.response) {
+            var table = $("#communities");
+            var communities = data.response;
+            for (var i = 0; i < communities.length; i++) {
+                table.append(
+                                "<tr><td>" + i + "</td>" +
+                                "<td><a href='http://vk.com/" + communities[i].screen_name + "'>" + communities[i].name + "</a>" +
+                                "<td><img src='" + communities[i].photo_50 + "'>" +
+                                "</tr>");
+            }
+            $("#results").show();
+            $("#spinner").hide();
+        }
+    }
+
+    function getLikesList(owner_id, repost_id, callback) {
+        VK.Api.call('likes.getList', {
+            type: 'post',
+            filter: 'copies',
+            owner_id: owner_id,
+            item_id: repost_id,
+            offset: '0',
+            count: '1000',
+            v: apiVer
+        }, function (data) {
+            callback(data);
+        });
+    }
+
+    function getUsers(uids, callback) {
+        VK.Api.call('users.get', {
+            user_ids: uids,
+            fields: 'photo',
+            v: apiVer
+        }, function (data) {
+            callback(data);
+        });
+    }
+
+    function getCommunities(uids, callback) {
+        VK.Api.call('groups.getById', {
+            group_ids: uids,
+            fields: 'domain',
+            v: apiVer
+        }, function (data) {
+            callback(data);
+        });
+    }
+</script>
+</body>
+</html>
